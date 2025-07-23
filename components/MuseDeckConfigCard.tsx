@@ -209,6 +209,22 @@ export default function MuseDeckConfigCard() {
         } else {
             alert('Config saved successfully!');
             setSavedSettings(settingsToSave);
+
+            try {
+                const notifyRes = await fetch('/api/update-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settingsToSave),
+                });
+
+                if (!notifyRes.ok) {
+                    console.error('Failed to send config update notification via MQTT API');
+                } else {
+                    console.log('Config update notification sent successfully!');
+                }
+            } catch (notifyError) {
+                console.error('Error sending config update notification:', notifyError);
+            }
         }
         setLoading(false);
     };
