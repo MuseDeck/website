@@ -1,16 +1,16 @@
-// components/MuseDeckConfigCard.tsx
 'use client';
 
-import { useState, useEffect, useMemo } from 'react'; // 导入 useMemo
-import { useSupabase } from '../app/supabase-provider'; // 根据实际路径调整
+import { useState, useEffect, useMemo } from 'react';
+import { useSupabase } from '../app/supabase-provider';
 import {
     Button,
     Switch,
     Select,
     SelectItem,
     Spinner,
-    Tabs, // 导入 Tabs
-    Tab, // 导入 Tab
+    Tabs,
+    Tab,
+    Selection,
 } from "@heroui/react";
 
 interface UserSettings {
@@ -25,7 +25,6 @@ interface UserSettings {
 export default function MuseDeckConfigCard() {
     const supabase = useSupabase();
 
-    // 用于存储用户实际保存的设置
     const [savedSettings, setSavedSettings] = useState<UserSettings>({
         calendar_enabled: true,
         recipe_enabled: true,
@@ -33,7 +32,6 @@ export default function MuseDeckConfigCard() {
         daily_quote_enabled: true,
         device_location: 'default_location',
     });
-    // 用于UI显示和交互的临时设置状态
     const [currentUiSettings, setCurrentUiSettings] = useState<UserSettings>({
         calendar_enabled: true,
         recipe_enabled: true,
@@ -44,7 +42,7 @@ export default function MuseDeckConfigCard() {
 
     const [loading, setLoading] = useState(true);
     const [currentSettingId, setCurrentSettingId] = useState<string | null>(null);
-    const [selectedTab, setSelectedTab] = useState<string>("autoRecommendation"); // 新增：控制当前选中的 Tab
+    const [selectedTab, setSelectedTab] = useState<string>("autoRecommendation");
 
     const deviceLocations = [
         { key: "default_location", value: "Default" },
@@ -55,7 +53,6 @@ export default function MuseDeckConfigCard() {
         { key: "bedroom", value: "Bedroom" },
     ];
 
-    // 仅用于自动推荐模式的受限位置选项
     const autoRecommendationLocations = useMemo(() => [
         { key: "study_room", value: "Study Room" },
         { key: "kitchen", value: "Kitchen" },
@@ -81,21 +78,19 @@ export default function MuseDeckConfigCard() {
                 }
             } else if (data) {
                 setSavedSettings(data);
-                setCurrentUiSettings(data); // 初始化UI设置
+                setCurrentUiSettings(data);
                 setCurrentSettingId(data.id || null);
 
-                // 根据加载的设置，尝试判断应该显示哪个Tab
-                // 这是一个简化的判断，如果设置与某个自动推荐场景完全匹配，则切换到该Tab
                 if (data.device_location === 'study_room' &&
                     data.calendar_enabled && data.inspiration_enabled && data.daily_quote_enabled &&
-                    !data.recipe_enabled) { // 假设study room模式下recipe是关闭的
+                    !data.recipe_enabled) {
                     setSelectedTab("autoRecommendation");
                 } else if (data.device_location === 'kitchen' &&
                     data.recipe_enabled && data.daily_quote_enabled &&
-                    !data.calendar_enabled && !data.inspiration_enabled) { // 假设kitchen模式下其他是关闭的
+                    !data.calendar_enabled && !data.inspiration_enabled) {
                     setSelectedTab("autoRecommendation");
                 } else {
-                    setSelectedTab("customization"); // 否则默认进入自定义模式
+                    setSelectedTab("customization");
                 }
             }
             setLoading(false);
@@ -104,41 +99,49 @@ export default function MuseDeckConfigCard() {
         fetchSettings();
     }, [supabase]);
 
-    // 处理自定义模式下的开关切换
     const handleToggleCustom = (key: keyof UserSettings) => {
         setCurrentUiSettings(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
-    // 处理自定义模式下的位置选择
-    const handleLocationChangeCustom = (keys: Set<React.Key>) => {
-        const selectedKey = Array.from(keys)[0];
-        setCurrentUiSettings(prev => ({ ...prev, device_location: String(selectedKey) }));
+    const handleLocationChangeCustom = (selection: Selection) => {
+        let selectedValue: string | null = null;
+        if (typeof selection === 'string') {
+            selectedValue = selection;
+        } else if (selection instanceof Set && selection.size > 0) {
+            selectedValue = Array.from(selection)[0] as string;
+        }
+        setCurrentUiSettings(prev => ({ ...prev, device_location: selectedValue }));
     };
 
-    // 处理自动推荐模式下的位置选择
-    const handleLocationChangeAuto = (keys: Set<React.Key>) => {
-        const selectedLocation = String(Array.from(keys)[0]);
-        let newSettings = { ...savedSettings, device_location: selectedLocation };
+    const handleLocationChangeAuto = (selection: Selection) => {
+        let selectedLocation: string | null = null;
+        if (typeof selection === 'string') {
+            selectedLocation = selection;
+        } else if (selection instanceof Set && selection.size > 0) {
+            selectedLocation = Array.from(selection)[0] as string;
+        }
 
-        // 根据选择的位置，更新对应的启用状态
+        if (!selectedLocation) return;
+
+        let newSettings = { ...currentUiSettings, device_location: selectedLocation };
+
         if (selectedLocation === 'study_room') {
             newSettings = {
                 ...newSettings,
                 calendar_enabled: true,
                 inspiration_enabled: true,
                 daily_quote_enabled: true,
-                recipe_enabled: false, // 明确关闭
+                recipe_enabled: false,
             };
         } else if (selectedLocation === 'kitchen') {
             newSettings = {
                 ...newSettings,
                 recipe_enabled: true,
                 daily_quote_enabled: true,
-                calendar_enabled: false, // 明确关闭
-                inspiration_enabled: false, // 明确关闭
+                calendar_enabled: false,
+                inspiration_enabled: false,
             };
         }
-        // 更新 UI 状态以反映自动推荐的改变
         setCurrentUiSettings(newSettings);
     };
 
@@ -148,14 +151,12 @@ export default function MuseDeckConfigCard() {
         let error = null;
         let data = null;
 
-        // 根据当前选中的 Tab 决定要保存的实际设置
         let settingsToSave: UserSettings;
         if (selectedTab === "autoRecommendation") {
-            // 在自动推荐模式下，始终保存基于当前选择的 location 自动生成的设置
             const selectedLocation = currentUiSettings.device_location;
             if (selectedLocation === 'study_room') {
                 settingsToSave = {
-                    ...currentUiSettings, // 继承 id 等
+                    ...currentUiSettings,
                     calendar_enabled: true,
                     inspiration_enabled: true,
                     daily_quote_enabled: true,
@@ -164,7 +165,7 @@ export default function MuseDeckConfigCard() {
                 };
             } else if (selectedLocation === 'kitchen') {
                 settingsToSave = {
-                    ...currentUiSettings, // 继承 id 等
+                    ...currentUiSettings,
                     recipe_enabled: true,
                     daily_quote_enabled: true,
                     calendar_enabled: false,
@@ -172,20 +173,18 @@ export default function MuseDeckConfigCard() {
                     device_location: 'kitchen'
                 };
             } else {
-                // 如果在自动模式下选择了非预设的location（理论上不会发生，但以防万一）
                 alert('Please select a valid location for auto recommendation.');
                 setLoading(false);
                 return;
             }
         } else {
-            // 自定义模式，直接保存 UI 上的设置
             settingsToSave = currentUiSettings;
         }
 
         if (currentSettingId) {
             const result = await supabase
                 .from('display_settings')
-                .update(settingsToSave) // 使用要保存的设置
+                .update(settingsToSave)
                 .eq('id', currentSettingId)
                 .select()
                 .single();
@@ -194,7 +193,7 @@ export default function MuseDeckConfigCard() {
         } else {
             const result = await supabase
                 .from('display_settings')
-                .insert([{ ...settingsToSave, user_id: null }]) // user_id is null for hackathon MVP
+                .insert([{ ...settingsToSave, user_id: null }])
                 .select()
                 .single();
             data = result.data;
@@ -209,7 +208,7 @@ export default function MuseDeckConfigCard() {
             alert(`Config saving failed: ${error.message}`);
         } else {
             alert('Config saved successfully!');
-            setSavedSettings(settingsToSave); // 更新保存的设置
+            setSavedSettings(settingsToSave);
         }
         setLoading(false);
     };
@@ -232,8 +231,8 @@ export default function MuseDeckConfigCard() {
                 aria-label="Configuration Tabs"
                 selectedKey={selectedTab}
                 onSelectionChange={(key) => setSelectedTab(String(key))}
-                fullWidth // 让 Tab 宽度占满
-                color="primary" // Tab 选中颜色
+                fullWidth
+                color="primary"
                 className="mb-6"
             >
                 <Tab key="autoRecommendation" title="Auto Recommendation">
@@ -242,31 +241,31 @@ export default function MuseDeckConfigCard() {
                             label="Device Location"
                             placeholder="Select a pre-defined location"
                             selectedKeys={currentUiSettings.device_location ? new Set([currentUiSettings.device_location]) : new Set()}
-                            onSelectionChange={handleLocationChangeAuto} // 针对自动推荐模式的修改
+                            onSelectionChange={handleLocationChangeAuto}
                             className="max-w-full mb-4"
                             aria-label="Select device location for auto recommendation"
+                            selectionMode="single"
                         >
                             {autoRecommendationLocations.map((location) => (
-                                <SelectItem key={location.key} value={location.key}>
+                                <SelectItem key={location.key}>
                                     {location.value}
                                 </SelectItem>
                             ))}
                         </Select>
 
-                        {/* 根据选择的位置显示推荐内容状态 (不可修改) */}
                         <div className="space-y-4 p-4 border border-dashed border-gray-300 rounded-md">
                             <p className="text-gray-700 font-semibold mb-2">Recommended Content:</p>
                             <Switch
                                 isSelected={currentUiSettings.calendar_enabled}
                                 isDisabled // 禁用开关
                                 className="flex justify-between items-center"
-                                color="success" // 绿色表示开启
+                                color="success"
                             >
                                 Calendar
                             </Switch>
                             <Switch
                                 isSelected={currentUiSettings.recipe_enabled}
-                                isDisabled // 禁用开关
+                                isDisabled
                                 className="flex justify-between items-center"
                                 color="success"
                             >
@@ -274,7 +273,7 @@ export default function MuseDeckConfigCard() {
                             </Switch>
                             <Switch
                                 isSelected={currentUiSettings.inspiration_enabled}
-                                isDisabled // 禁用开关
+                                isDisabled
                                 className="flex justify-between items-center"
                                 color="success"
                             >
@@ -282,7 +281,7 @@ export default function MuseDeckConfigCard() {
                             </Switch>
                             <Switch
                                 isSelected={currentUiSettings.daily_quote_enabled}
-                                isDisabled // 禁用开关
+                                isDisabled
                                 className="flex justify-between items-center"
                                 color="success"
                             >
@@ -298,12 +297,12 @@ export default function MuseDeckConfigCard() {
                             label="Device Location"
                             placeholder="Select any location"
                             selectedKeys={currentUiSettings.device_location ? new Set([currentUiSettings.device_location]) : new Set()}
-                            onSelectionChange={handleLocationChangeCustom} // 针对自定义模式
+                            onSelectionChange={handleLocationChangeCustom}
                             className="max-w-full"
                             aria-label="Select device location"
                         >
                             {deviceLocations.map((location) => (
-                                <SelectItem key={location.key} value={location.key}>
+                                <SelectItem key={location.key}>
                                     {location.value}
                                 </SelectItem>
                             ))}

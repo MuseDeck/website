@@ -1,20 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { useSupabase } from '@/app/supabase-provider';
+import { useSupabase } from '../app/supabase-provider';
 import {
     Button,
     Spinner,
     Input,
-    RadioGroup,
-    Radio,
-    Textarea
+    Textarea,
+    Tabs,
+    Tab,
 } from "@heroui/react";
 
 export default function CollectContentCard() {
     const supabase = useSupabase();
 
-    const [contentType, setContentType] = useState<'webpage' | 'text'>('webpage');
+    const [contentType, setContentType] = useState<string>('webpage');
     const [contentInput, setContentInput] = useState<string>('');
     const [submittingContent, setSubmittingContent] = useState(false);
 
@@ -33,6 +33,7 @@ export default function CollectContentCard() {
                         user_id: null,
                         content_type: contentType,
                         original_content: contentInput.trim(),
+                        // ai_summary, ai_keywords, ai_category 为空，待 Dify AI 处理
                     }
                 ])
                 .select()
@@ -45,7 +46,7 @@ export default function CollectContentCard() {
                 console.log('Content saved:', data);
                 alert('Content saved successfully! AI processing will begin soon.');
                 setContentInput('');
-                // TODO: Trigger Dify AI processing
+                // TODO: Trigger Dify AI processing here
             }
         } catch (submitError) {
             console.error('Submission error:', submitError);
@@ -60,38 +61,47 @@ export default function CollectContentCard() {
             <div className="flex justify-center mb-8">
                 <h2 className="text-2xl font-bold text-gray-800">Collect Content</h2>
             </div>
-            <div className="space-y-6 mb-8">
-                <RadioGroup
-                    label="Content Type"
-                    orientation="horizontal"
-                    value={contentType}
-                    onValueChange={(value) => setContentType(value as 'webpage' | 'text')}
-                >
-                    <Radio value="webpage">Webpage (URL)</Radio>
-                    <Radio value="text">Text (Snippet/Note)</Radio>
-                </RadioGroup>
 
-                {contentType === 'webpage' ? (
-                    <Input
-                        type="url"
-                        label="Webpage URL"
-                        placeholder="e.g., https://example.com/article"
-                        value={contentInput}
-                        onValueChange={setContentInput}
-                        fullWidth
-                    />
-                ) : (
-                    <Textarea
-                        label="Content Text"
-                        placeholder="Type or paste your note or snippet here..."
-                        value={contentInput}
-                        onValueChange={setContentInput}
-                        fullWidth
-                        minRows={5}
-                    />
-                )}
-            </div>
-            <div className="flex justify-center">
+            <Tabs
+                aria-label="Content Type"
+                selectedKey={contentType}
+                onSelectionChange={(key) => {
+                    setContentType(String(key));
+                    setContentInput('');
+                }}
+                fullWidth
+                color="primary"
+                className="mb-6"
+            >
+                <Tab key="webpage" title="Webpage (URL)">
+                    <div className="p-4 space-y-6">
+                        <Input
+                            type="url"
+                            label="Webpage URL"
+                            placeholder="e.g., https://example.com/article"
+                            value={contentInput}
+                            onValueChange={setContentInput}
+                            fullWidth
+                            variant="bordered"
+                        />
+                    </div>
+                </Tab>
+                <Tab key="text" title="Text (Snippet/Note)">
+                    <div className="p-4 space-y-6">
+                        <Textarea
+                            label="Content Text"
+                            placeholder="Type or paste your note or snippet here..."
+                            value={contentInput}
+                            onValueChange={setContentInput}
+                            fullWidth
+                            minRows={5}
+                            variant="bordered"
+                        />
+                    </div>
+                </Tab>
+            </Tabs>
+
+            <div className="flex justify-center mt-6">
                 <Button
                     onClick={handleSubmitContent}
                     isDisabled={submittingContent}
