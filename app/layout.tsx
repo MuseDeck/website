@@ -42,7 +42,7 @@ export default function RootLayout({
                 fontSans.variable,
             )}
         >
-        <Providers themeProps={{attribute: "class"}}>
+        <Providers themeProps={{attribute: "class", defaultTheme: "white"}}>
             <SupabaseProvider>
                 <div className="relative flex flex-col h-screen">
                     <Navbar />
