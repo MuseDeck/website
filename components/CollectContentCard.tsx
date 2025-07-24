@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useSupabase } from '../app/supabase-provider';
+import { useSupabase } from '@/app/supabase-provider';
 import {
     Button,
     Spinner,
@@ -30,10 +30,12 @@ export default function CollectContentCard() {
                 .from('collected_content')
                 .insert([
                     {
-                        user_id: null,
+                        user_id: null, // MVP: user_id set to null
                         content_type: contentType,
                         original_content: contentInput.trim(),
-                        // ai_summary, ai_keywords, ai_category 为空，待 Dify AI 处理
+                        ai_summary: null,
+                        ai_keywords: null,
+                        ai_category: null,
                     }
                 ])
                 .select()
@@ -42,12 +44,29 @@ export default function CollectContentCard() {
             if (error) {
                 console.error('Error inserting collected content:', error);
                 alert(`Failed to save content: ${error.message}`);
-            } else {
-                console.log('Content saved:', data);
-                alert('Content saved successfully! AI processing will begin soon.');
-                setContentInput('');
-                // TODO: Trigger Dify AI processing here
+                return;
             }
+
+            console.log('Content saved to Supabase:', data);
+            alert('Content saved successfully! AI processing will begin shortly.');
+            setContentInput('');
+
+            try {
+                const processAiRes = await fetch('/api/knowledge-organization', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contentId: data.id }),
+                });
+
+                if (!processAiRes.ok) {
+                    console.error('Failed to trigger AI processing API.');
+                } else {
+                    console.log('AI processing triggered successfully for content ID:', data.id);
+                }
+            } catch (triggerError) {
+                console.error('Error triggering AI processing:', triggerError);
+            }
+
         } catch (submitError) {
             console.error('Submission error:', submitError);
             alert('An unexpected error occurred during submission.');

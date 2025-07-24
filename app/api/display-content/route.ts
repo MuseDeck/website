@@ -35,9 +35,9 @@ export async function GET() {
         if (settings?.recipe_enabled) {
             responseContent.recipe = {
                 title: 'Today\'s Recommended Recipe',
-                name: 'Stir-fried Tomatoes with Eggs',
-                ingredients: ['Tomatoes', 'Eggs', 'Scallions', 'Salt'],
-                instructions: '1. Scramble eggs 2. Stir-fry tomatoes 3. Combine',
+                content: 'Stir-fried Tomatoes with Eggs\n1. Scramble eggs 2. Stir-fry tomatoes 3. Combine',
+                keyword: ['Tomatoes', 'Eggs', 'Scallions', 'Salt'],
+                source: 'AI-generated/Clipping',
             };
         }
 
@@ -45,6 +45,7 @@ export async function GET() {
             responseContent.inspiration = {
                 title: 'Inspiration Card',
                 content: '“Creativity is just connecting things.” - Steve Jobs',
+                keyword: ['quote', 'Jobs', 'celebrity'],
                 source: 'AI-generated/Clipping',
             };
         }
