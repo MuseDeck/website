@@ -17,6 +17,8 @@ function getMqttClient(): mqtt.MqttClient {
         mqttClient = mqtt.connect(MQTT_BROKER_URL, {
             clientId: `nextjs_ai_processor_${Math.random().toString(16).substring(2, 8)}`,
             reconnectPeriod: 1000,
+            username: process.env.MQTT_USERNAME,
+            password: process.env.MQTT_PASSWORD,
         });
         mqttClient.on('connect', () => console.log('MQTT AI processor client connected!'));
         mqttClient.on('error', (err) => {
@@ -33,6 +35,10 @@ function getMqttClient(): mqtt.MqttClient {
 
 export async function POST(req: Request) {
     const {contentId} = await req.json();
+
+    let aiSummary = 'No summary generated.';
+    let aiKeywords: string[] = [];
+    let aiCategory = 'other';
 
     if (!contentId) {
         return NextResponse.json({message: 'Missing contentId'}, {status: 400});
@@ -58,10 +64,6 @@ export async function POST(req: Request) {
         console.log(contentType);
         // console.log(currentUserId);
 
-        let aiSummary = 'No summary generated.';
-        let aiKeywords: string[] = [];
-        let aiCategory = 'other';
-
         try {
             const response = await fetch("https://api.dify.ai/v1/workflows/run", {
                 method: "POST",
@@ -71,9 +73,10 @@ export async function POST(req: Request) {
                 },
                 body: JSON.stringify({
                     workflow_id: "82a729fe-4256-4781-bf35-49b5b81bba38",
+                    user: "0428bbb7-57cc-4f6e-95d7-c03222a529e7",
                     inputs: {
-                        contentType,
-                        originalContent
+                        content_type: contentType,
+                        original_content: originalContent
                     },
                     response_mode: "blocking"
                 })
@@ -86,10 +89,11 @@ export async function POST(req: Request) {
                 return NextResponse.json({message: 'Failed to fetch data.'}, {status: 500});
             }
 
-            const parsedDifyOutput = JSON.parse(data);
-            console.log(parsedDifyOutput);
+            console.log(data?.data?.outputs?.output);
 
-            // return NextResponse.json({ message: 'Successfully retrieved data.', data: data }, {status: 200});
+            aiSummary = data?.data?.outputs?.output?.ai_summarize;
+            aiKeywords = data?.data?.outputs?.output?.ai_keyword;
+            aiCategory = data?.data?.outputs?.output?.ai_category;
 
         } catch (error) {
             console.error(error);
@@ -99,62 +103,51 @@ export async function POST(req: Request) {
         console.error(error);
     }
 
-    //
-    // try {
-    //     const parsedDifyOutput = JSON.parse(difyResult.answer || '{}');
-    //     aiSummary = parsedDifyOutput.summary || aiSummary;
-    //     aiKeywords = Array.isArray(parsedDifyOutput.keywords) ? parsedDifyOutput.keywords : [];
-    //     aiCategory = parsedDifyOutput.category || aiCategory;
-    // } catch (parseError) {
-    //     console.warn('Could not parse Dify output as JSON. Using raw answer.', parseError);
-    //     aiSummary = difyResult.answer || aiSummary;
-    // }
-    //
-    // const { error: updateError } = await supabase
-    //     .from('collected_content')
-    //     .update({
-    //         ai_summary: aiSummary,
-    //         ai_keywords: aiKeywords,
-    //         ai_category: aiCategory,
-    //         updated_at: new Date().toISOString(),
-    //     })
-    //     .eq('id', contentId);
-    //
-    // if (updateError) {
-    //     console.error('Error updating collected content with AI results:', updateError);
-    //     return NextResponse.json({ message: 'Failed to update content with AI results' }, { status: 500 });
-    // }
-    //
-    // console.log(`Content ID ${contentId} successfully processed by AI and updated.`);
+    const { error: updateError } = await supabase
+        .from('collected_content')
+        .update({
+            ai_summary: aiSummary,
+            ai_keywords: aiKeywords,
+            ai_category: aiCategory,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', contentId);
 
-    // const client = getMqttClient();
-    // if (!client.connected) {
-    //     console.log('MQTT client not connected, waiting for connection...');
-    //     await new Promise<void>((resolve, reject) => {
-    //         client.once('connect', (packet) => resolve());
-    //         client.once('error', reject);
-    //         const timeout = setTimeout(() => reject(new Error('MQTT connection timeout')), 5000);
-    //         client.once('connect', () => clearTimeout(timeout));
-    //     });
-    //     console.log('MQTT client connected after waiting.');
-    // }
+    if (updateError) {
+        console.error('Error updating collected content with AI results:', updateError);
+        return NextResponse.json({ message: 'Failed to update content with AI results' }, { status: 500 });
+    }
 
-    // const topic = 'sui-lan/inspiration/new';
-    // const messagePayload = {
-    //     status: 'New inspiration available',
-    //     content_id: contentId,
-    //     category: aiCategory,
-    //     timestamp: new Date().toISOString(),
-    // };
-    //
-    // await new Promise<void>((resolve, reject) => {
-    //     client.publish(topic, JSON.stringify(messagePayload), {qos: 0, retain: false}, (err) => {
-    //         if (err) reject(err);
-    //         else resolve();
-    //     });
-    // });
+    console.log(`Content ID ${contentId} successfully processed by AI and updated.`);
 
-    // console.log(`MQTT message published to topic "${topic}" for new inspiration: ${contentId}`);
+    const client = getMqttClient();
+    if (!client.connected) {
+        console.log('MQTT client not connected, waiting for connection...');
+        await new Promise<void>((resolve, reject) => {
+            client.once('connect', (packet) => resolve());
+            client.once('error', reject);
+            const timeout = setTimeout(() => reject(new Error('MQTT connection timeout')), 5000);
+            client.once('connect', () => clearTimeout(timeout));
+        });
+        console.log('MQTT client connected after waiting.');
+    }
+
+    const topic = 'sui-lan/inspiration/new';
+    const messagePayload = {
+        status: 'New inspiration available',
+        content_id: contentId,
+        category: aiCategory,
+        timestamp: new Date().toISOString(),
+    };
+
+    await new Promise<void>((resolve, reject) => {
+        client.publish(topic, JSON.stringify(messagePayload), {qos: 0, retain: false}, (err) => {
+            if (err) reject(err);
+            else resolve();
+        });
+    });
+
+    console.log(`MQTT message published to topic "${topic}" for new inspiration: ${contentId}`);
 
     return NextResponse.json({message: 'Content processed by AI and published successfully', contentId});
 

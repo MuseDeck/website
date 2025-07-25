@@ -26,6 +26,7 @@
     "@supabase/supabase-js": "^2.52.1",
     "clsx": "2.1.1",
     "framer-motion": "11.18.2",
+    "geist": "^1.4.2",
     "intl-messageformat": "10.7.16",
     "mqtt": "^5.13.3",
     "next": "15.3.1",

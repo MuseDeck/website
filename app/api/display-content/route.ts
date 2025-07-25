@@ -50,6 +50,14 @@ export async function GET() {
             };
         }
 
+        if (settings?.tasks_enabled) {
+            responseContent.tasks = {
+                title: 'Upcoming Tasks',
+                content: '1. Design new scheduled API\n2. Write BP\n3. Prepare the demo',
+                keyword: ['design', 'BP', 'demo'],
+            };
+        }
+
         if (settings?.daily_quote_enabled) {
             try {
                 const hitokotoRes = await fetch('https://v1.hitokoto.cn/');

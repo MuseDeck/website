@@ -18,6 +18,7 @@ interface UserSettings {
     recipe_enabled: boolean;
     inspiration_enabled: boolean;
     daily_quote_enabled: boolean;
+    tasks_enabled: boolean,
     device_location: string | null;
     id?: string;
 }
@@ -30,6 +31,7 @@ export default function MuseDeckConfigCard() {
         recipe_enabled: true,
         inspiration_enabled: true,
         daily_quote_enabled: true,
+        tasks_enabled: true,
         device_location: 'default_location',
     });
     const [currentUiSettings, setCurrentUiSettings] = useState<UserSettings>({
@@ -37,6 +39,7 @@ export default function MuseDeckConfigCard() {
         recipe_enabled: true,
         inspiration_enabled: true,
         daily_quote_enabled: true,
+        tasks_enabled: true,
         device_location: 'default_location',
     });
 
@@ -45,12 +48,8 @@ export default function MuseDeckConfigCard() {
     const [selectedTab, setSelectedTab] = useState<string>("autoRecommendation");
 
     const deviceLocations = [
-        { key: "default_location", value: "Default" },
-        { key: "living_room", value: "Living Room" },
         { key: "study_room", value: "Study Room" },
         { key: "kitchen", value: "Kitchen" },
-        { key: "office", value: "Office" },
-        { key: "bedroom", value: "Bedroom" },
     ];
 
     const autoRecommendationLocations = useMemo(() => [
@@ -132,6 +131,7 @@ export default function MuseDeckConfigCard() {
                 inspiration_enabled: true,
                 daily_quote_enabled: true,
                 recipe_enabled: false,
+                tasks_enabled: true,
             };
         } else if (selectedLocation === 'kitchen') {
             newSettings = {
@@ -140,6 +140,7 @@ export default function MuseDeckConfigCard() {
                 daily_quote_enabled: true,
                 calendar_enabled: false,
                 inspiration_enabled: false,
+                tasks_enabled: false,
             };
         }
         setCurrentUiSettings(newSettings);
@@ -161,6 +162,7 @@ export default function MuseDeckConfigCard() {
                     inspiration_enabled: true,
                     daily_quote_enabled: true,
                     recipe_enabled: false,
+                    tasks_enabled: true,
                     device_location: 'study_room'
                 };
             } else if (selectedLocation === 'kitchen') {
@@ -170,6 +172,7 @@ export default function MuseDeckConfigCard() {
                     daily_quote_enabled: true,
                     calendar_enabled: false,
                     inspiration_enabled: false,
+                    tasks_enabled: false,
                     device_location: 'kitchen'
                 };
             } else {
@@ -296,6 +299,14 @@ export default function MuseDeckConfigCard() {
                                 Inspiration
                             </Switch>
                             <Switch
+                                isSelected={currentUiSettings.tasks_enabled}
+                                isDisabled
+                                className="flex justify-between items-center"
+                                color="success"
+                            >
+                                Tasks
+                            </Switch>
+                            <Switch
                                 isSelected={currentUiSettings.daily_quote_enabled}
                                 isDisabled
                                 className="flex justify-between items-center"
@@ -343,6 +354,13 @@ export default function MuseDeckConfigCard() {
                             className="flex justify-between items-center"
                         >
                             Inspiration
+                        </Switch>
+                        <Switch
+                            isSelected={currentUiSettings.tasks_enabled}
+                            onValueChange={() => handleToggleCustom('tasks_enabled')}
+                            className="flex justify-between items-center"
+                        >
+                            Tasks
                         </Switch>
                         <Switch
                             isSelected={currentUiSettings.daily_quote_enabled}

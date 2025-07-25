@@ -7,8 +7,11 @@ import {Providers} from "./providers";
 import SupabaseProvider from './supabase-provider';
 
 import {siteConfig} from "@/config/site";
-import {fontSans} from "@/config/fonts";
+// import {fontSans} from "@/config/fonts";
 import {Navbar} from "@/components/navbar";
+
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 
 export const metadata: Metadata = {
     title: {
@@ -34,12 +37,11 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html suppressHydrationWarning lang="en">
+        <html suppressHydrationWarning lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
         <head><title></title></head>
         <body
             className={clsx(
-                "min-h-screen text-foreground bg-background font-sans antialiased",
-                fontSans.variable,
+                `min-h-screen text-foreground bg-background antialiased`
             )}
         >
         <Providers themeProps={{attribute: "class", defaultTheme: "white"}}>
