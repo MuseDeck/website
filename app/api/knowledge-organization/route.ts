@@ -9,29 +9,6 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const DIFY_API_BASE_URL = process.env.DIFY_API_BASE_URL || 'https://api.dify.ai/v1';
 const DIFY_API_KEY = process.env.DIFY_API_KEY!;
 
-const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL!;
-let mqttClient: mqtt.MqttClient | null = null;
-
-function getMqttClient(): mqtt.MqttClient {
-    if (!mqttClient || mqttClient.disconnected) {
-        mqttClient = mqtt.connect(MQTT_BROKER_URL, {
-            clientId: `nextjs_ai_processor_${Math.random().toString(16).substring(2, 8)}`,
-            reconnectPeriod: 1000,
-            username: process.env.MQTT_USERNAME,
-            password: process.env.MQTT_PASSWORD,
-        });
-        mqttClient.on('connect', () => console.log('MQTT AI processor client connected!'));
-        mqttClient.on('error', (err) => {
-            console.error('MQTT AI processor client error:', err);
-            if (mqttClient) {
-                mqttClient.end();
-                mqttClient = null;
-            }
-        });
-    }
-    return mqttClient;
-}
-
 
 export async function POST(req: Request) {
     const {contentId} = await req.json();
@@ -120,35 +97,6 @@ export async function POST(req: Request) {
 
     console.log(`Content ID ${contentId} successfully processed by AI and updated.`);
 
-    const client = getMqttClient();
-    if (!client.connected) {
-        console.log('MQTT client not connected, waiting for connection...');
-        await new Promise<void>((resolve, reject) => {
-            client.once('connect', (packet) => resolve());
-            client.once('error', reject);
-            const timeout = setTimeout(() => reject(new Error('MQTT connection timeout')), 5000);
-            client.once('connect', () => clearTimeout(timeout));
-        });
-        console.log('MQTT client connected after waiting.');
-    }
-
-    const topic = 'sui-lan/inspiration/new';
-    const messagePayload = {
-        status: 'New inspiration available',
-        content_id: contentId,
-        category: aiCategory,
-        timestamp: new Date().toISOString(),
-    };
-
-    await new Promise<void>((resolve, reject) => {
-        client.publish(topic, JSON.stringify(messagePayload), {qos: 0, retain: false}, (err) => {
-            if (err) reject(err);
-            else resolve();
-        });
-    });
-
-    console.log(`MQTT message published to topic "${topic}" for new inspiration: ${contentId}`);
-
-    return NextResponse.json({message: 'Content processed by AI and published successfully', contentId});
+    return NextResponse.json({message: 'Content processed by AI successfully', contentId});
 
 }
