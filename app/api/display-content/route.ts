@@ -35,21 +35,79 @@ export async function GET() {
         }
 
         if (settings?.recipe_enabled) {
-            responseContent.recipe = {
-                title: 'Today\'s Recommended Recipe',
-                content: 'Stir-fried Tomatoes with Eggs\n1. Scramble eggs 2. Stir-fry tomatoes 3. Combine',
-                keyword: ['Tomatoes', 'Eggs', 'Scallions', 'Salt'],
-                source: 'AI-generated/Clipping',
-            };
+            try {
+                const { data: recipeData, error: recipeError } = await supabase
+                    .from('collected_content')
+                    .select('ai_summary, ai_keywords, original_content')
+                    .eq('ai_category', 'kitchen')
+                    .not('ai_summary', 'is', null)
+                    .order('random()')
+                    .limit(1)
+                    .single();
+
+                if (recipeError || !recipeData) {
+                    console.warn('No kitchen recipe found or error fetching:', recipeError?.message);
+                    responseContent.recipe = {
+                        title: 'Today\'s Recommended Recipe',
+                        content: 'No specific recipe found. Here is a default one: Stir-fried Tomatoes with Eggs\n1. Scramble eggs 2. Stir-fry tomatoes 3. Combine',
+                        keyword: ['default', 'recipe'],
+                        source: 'Default Fallback',
+                    };
+                } else {
+                    responseContent.recipe = {
+                        title: 'Today\'s Recommended Recipe',
+                        content: recipeData.ai_summary || recipeData.original_content || 'No summary available.',
+                        keyword: Array.isArray(recipeData.ai_keywords) ? recipeData.ai_keywords : [],
+                        source: 'AI-generated/Clipping',
+                    };
+                }
+            } catch (e) {
+                console.error('Error getting random recipe:', e);
+                responseContent.recipe = {
+                    title: 'Today\'s Recommended Recipe',
+                    content: 'Error fetching recipe. Please check backend logs.',
+                    keyword: [],
+                    source: 'API Error',
+                };
+            }
         }
 
         if (settings?.inspiration_enabled) {
-            responseContent.inspiration = {
-                title: 'Inspiration Card',
-                content: '“Creativity is just connecting things.” - Steve Jobs',
-                keyword: ['quote', 'Jobs', 'celebrity'],
-                source: 'AI-generated/Clipping',
-            };
+            try {
+                const { data: inspirationData, error: inspirationError } = await supabase
+                    .from('collected_content')
+                    .select('ai_summary, ai_keywords, original_content')
+                    .eq('ai_category', 'study_room')
+                    .not('ai_summary', 'is', null)
+                    .order('random()')
+                    .limit(1)
+                    .single();
+
+                if (inspirationError || !inspirationData) {
+                    console.warn('No study room inspiration found or error fetching:', inspirationError?.message);
+                    responseContent.inspiration = {
+                        title: 'Inspiration Card',
+                        content: '“Creativity is just connecting things.” - Steve Jobs',
+                        keyword: ['default', 'quote', 'Jobs'],
+                        source: 'Default Fallback',
+                    };
+                } else {
+                    responseContent.inspiration = {
+                        title: 'Inspiration Card',
+                        content: inspirationData.ai_summary || inspirationData.original_content || 'No summary available.',
+                        keyword: Array.isArray(inspirationData.ai_keywords) ? inspirationData.ai_keywords : [],
+                        source: 'AI-generated/Clipping',
+                    };
+                }
+            } catch (e) {
+                console.error('Error getting random inspiration:', e);
+                responseContent.inspiration = {
+                    title: 'Inspiration Card',
+                    content: 'Error fetching inspiration. Please check backend logs.',
+                    keyword: [],
+                    source: 'API Error',
+                };
+            }
         }
 
         if (settings?.tasks_enabled) {
