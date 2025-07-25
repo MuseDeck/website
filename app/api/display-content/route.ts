@@ -22,6 +22,8 @@ export async function GET() {
 
         const responseContent: { [key: string]: any } = {};
 
+        responseContent.location = settings?.device_location;
+
         if (settings?.calendar_enabled) {
             responseContent.calendar = {
                 title: 'Today\'s Schedule',
