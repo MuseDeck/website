@@ -7,6 +7,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function GET() {
+    const randomValue = Math.random();
+
     try {
         const { data: settings, error: settingsError } = await supabase
             .from('display_settings')
@@ -41,7 +43,8 @@ export async function GET() {
                     .select('ai_summary, ai_keywords, original_content')
                     .eq('ai_category', 'kitchen')
                     .not('ai_summary', 'is', null)
-                    .order('random()')
+                    .order('random_float') // Order by your new random float column
+                    .gt('random_float', randomValue)
                     .limit(1)
                     .single();
 
@@ -79,7 +82,8 @@ export async function GET() {
                     .select('ai_summary, ai_keywords, original_content')
                     .eq('ai_category', 'study_room')
                     .not('ai_summary', 'is', null)
-                    .order('random()')
+                    .order('random_float') // Order by your new random float column
+                    .gt('random_float', randomValue)
                     .limit(1)
                     .single();
 
