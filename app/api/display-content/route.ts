@@ -52,7 +52,7 @@ export async function GET() {
                     console.warn('No kitchen recipe found or error fetching:', recipeError?.message);
                     responseContent.recipe = {
                         title: 'Today\'s Recommended Recipe',
-                        content: 'No specific recipe found. Here is a default one: Stir-fried Tomatoes with Eggs\n1. Scramble eggs 2. Stir-fry tomatoes 3. Combine',
+                        content: 'Stir-fried Tomatoes with Eggs\n1. Scramble eggs 2. Stir-fry tomatoes 3. Combine',
                         keyword: ['default', 'recipe'],
                         source: 'Default Fallback',
                     };
